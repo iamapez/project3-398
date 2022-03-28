@@ -30,31 +30,31 @@ def main():
 
         if getValueOfPin(displayButton):
             print('print on the display!')
-            continue
+            time.sleep(0.5)
 
         elif getValueOfPin(terminateButton):
             print('terminate connection!')
-            break
+            time.sleep(0.5)
 
         elif getValueOfPin(upButton):
             print('move it up!')
-            break
+            time.sleep(0.5)
 
         elif getValueOfPin(downButton):
             print('move it up!')
-            break
+            time.sleep(0.5)
 
         elif getValueOfPin(leftButton):
             print('move it left!')
-            break
+            time.sleep(0.5)
 
         elif getValueOfPin(rightButton):
             print('move it right!')
-            break
+            time.sleep(0.5)
 
         else:
             print('nothing pressed')
-
+            time.sleep(0.5)
 
 
 
