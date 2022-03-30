@@ -1,6 +1,7 @@
 import mraa
 import time
 import sys
+import cv2 as cv
 
 # connected pwm0 (pin11) to pwm pin on top servo
 # connected pwm1(pin13) to pwm pin on bottom servo
@@ -32,15 +33,53 @@ def angletoPWM(angle):
     temp = (0.000556 * angle) + 0.88
     if temp == 0.90088:
         temp = 0.9800
-
     print('value being sent to motor:')
     print(temp)
 
     return temp
 
 
+def testBothMotors():
+    for i in range(0, 177):
+        print("value of i passed:", i)
+        print("converted", angletoPWM(i))
+        tiltMotor.write(angletoPWM(i))
+        panMotor.write(angletoPWM(i))
+        time.sleep(0.1)
+
+
 def getValueOfPin(button):
     return button.read()
+
+
+def takeAPic():
+    cam = cv.VideoCapture(4)
+
+    cv.namedWindow("test")
+
+    img_counter = 0
+
+    while True:
+        ret, frame = cam.read()
+        if not ret:
+            print("failed to grab frame")
+            break
+        cv.imshow("test", frame)
+
+        k = cv.waitKey(1)
+        if k % 256 == 27:
+            # ESC pressed
+            print("Escape hit, closing...")
+            break
+        elif k % 256 == 32:
+            # SPACE pressed
+            img_name = "opencv_frame_{}.png".format(img_counter)
+            cv.imwrite(img_name, frame)
+            print("{} written!".format(img_name))
+            img_counter += 1
+
+    cam.release()
+    cv.destroyAllWindows()
 
 
 def main():
@@ -69,20 +108,9 @@ def main():
             print('nothing pressed')
             time.sleep(0.5)
 
-            for i in range(0, 177):
-                print("value of i passed:", i)
-                print("converted", angletoPWM(i))
-                tiltMotor.write(angletoPWM(i))
-                panMotor.write(angletoPWM(i))
-                time.sleep(0.1)
+            # testBothMotors()
+            takeAPic()
 
-
-
-            # for i in range(0, 177):
-            #     print("value of i passed:", i)
-            #     print("converted", angletoPWM(i))
-            #     panMotor.write(angletoPWM(i))
-            #     time.sleep(0.1)
 
 
 
