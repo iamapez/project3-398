@@ -4,6 +4,7 @@ import sys
 
 # connected pwm0 (pin11) to pwm pin on top servo
 # connected pwm1(pin13) to pwm pin on bottom servo
+# https://avinton.com/en/academy/install-python2-7-opencv/
 
 displayButton = mraa.Gpio(16)
 terminateButton = mraa.Gpio(18)
