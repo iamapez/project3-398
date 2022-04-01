@@ -110,6 +110,28 @@ def testTakeAPic():
     cv.destroyAllWindows()
 
 
+def takePicandDisplay():
+    cam = cv.VideoCapture(4)
+    # cv.namedWindow("CSE398")
+
+    img_counter = 0
+    ret, frame = cam.read()
+    if not ret:
+        print("failed to grab frame")
+
+    # cv.imshow("test", frame)
+    img_name = "opencv_frame_{}.png".format(img_counter)
+    cv.imwrite(img_name, frame)
+    print("{} written!".format(img_name))
+
+    img_counter += 1
+
+    cv.imshow('testing here',frame)
+
+    cv.waitKey(0)
+    cv.destroyAllWindows()
+
+
 def main():
     # main entry point for the program here
 
@@ -127,8 +149,8 @@ def main():
     while True:
         # check what button is being pressed
         if getValueOfPin(displayButton):
-            print('display button pressed!')
-            panMotor.write(angletoPWM(45))
+            # print('display button pressed!')
+            takePicandDisplay()
             time.sleep(0.2)
 
         elif getValueOfPin(terminateButton):
