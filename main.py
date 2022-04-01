@@ -2,6 +2,7 @@ import mraa
 import time
 import sys
 import cv2 as cv
+import zmq
 
 # connected pwm0 (pin11) to pwm pin on top servo
 # connected pwm1(pin13) to pwm pin on bottom servo
@@ -31,6 +32,17 @@ upButton.dir(mraa.DIR_IN)
 downButton.dir(mraa.DIR_IN)
 leftButton.dir(mraa.DIR_IN)
 rightButton.dir(mraa.DIR_IN)
+
+context = zmq.Context()
+socket = context.socket(zmq.REP)
+socket.bind('tcp://*:6969')
+
+while True:
+    message = socket.recv()
+    print('Recieved request', message)
+    time.sleep(1)
+    socket.send(b"world")
+
 
 
 def angletoPWM(angle):
@@ -126,7 +138,7 @@ def takePicandDisplay():
 
     img_counter += 1
 
-    cv.imshow('testing here',frame)
+    cv.imshow('testing here', frame)
 
     cv.waitKey(0)
     cv.destroyAllWindows()
