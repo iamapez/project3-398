@@ -49,11 +49,29 @@ def testBothMotors():
         time.sleep(0.1)
 
 
+def tiltGoToPosition(val):
+    for i in range(0, val):
+        print("value of i passed:", i)
+        print("converted", angletoPWM(i))
+        tiltMotor.write(angletoPWM(i))
+        # panMotor.write(angletoPWM(i))
+        time.sleep(0.1)
+
+
+def panGoToPosition(val):
+    for i in range(0, val):
+        print("value of i passed:", i)
+        print("converted", angletoPWM(i))
+        # tiltMotor.write(angletoPWM(i))
+        panMotor.write(angletoPWM(i))
+        time.sleep(0.1)
+
+
 def getValueOfPin(button):
     return button.read()
 
 
-def takeAPic():
+def testTakeAPic():
     cam = cv.VideoCapture(4)
 
     cv.namedWindow("test")
@@ -84,36 +102,67 @@ def takeAPic():
 
 
 def main():
-    flag = 0
-    value = 0.66
+    currentPWMTILT = 0
+    currentPWMPAN = 0
+    motorStep = 5
+
+    panMotor.write(angletoPWM(0))
+    tiltMotor.write(angletoPWM(0))
+
     while True:
         if getValueOfPin(displayButton):
-            print('print on the display!')
-            time.sleep(0.5)
+            print('display button pressed!')
+            panMotor.write(angletoPWM(45))
+            time.sleep(0.2)
         elif getValueOfPin(terminateButton):
             print('terminate connection!')
-            time.sleep(0.5)
+            time.sleep(0.2)
+
         elif getValueOfPin(upButton):
-            print('move it up!')
-            time.sleep(0.5)
+            # print('move it up!')
+            if currentPWMTILT > 177-motorStep:
+                print('OUT OF BOUNDS! GOING UP CURRENT POSITION', currentPWMTILT)
+                pass
+            else:
+                currentPWMTILT += motorStep
+
+            tiltMotor.write(angletoPWM(currentPWMTILT))
+            time.sleep(0.2)
         elif getValueOfPin(downButton):
-            print('move it up!')
-            time.sleep(0.5)
+            # print('move it down!')
+            print('OUT OF BOUNDS! GOING DOWN CURRENT POSITION', currentPWMTILT)
+            if currentPWMTILT < 0+motorStep:
+                pass
+            else:
+                currentPWMTILT -= motorStep
+            # print('current pwm value tilt:', currentPWMTILT)
+            tiltMotor.write(angletoPWM(currentPWMTILT))
+            time.sleep(0.2)
         elif getValueOfPin(leftButton):
-            print('move it left!')
-            time.sleep(0.5)
+            # print('move it left!')
+            print('OUT OF BOUNDS! GOING LEFT CURRENT POSITION', currentPWMPAN)
+            if currentPWMPAN < 0+motorStep:
+                pass
+            else:
+                currentPWMPAN -= motorStep
+            # print('current pwm value tilt:', currentPWMTILT)
+            panMotor.write(angletoPWM(currentPWMPAN))
+            time.sleep(0.2)
         elif getValueOfPin(rightButton):
-            print('move it right!')
-            time.sleep(0.5)
+            # print('move it right!')
+            if currentPWMPAN > 177-motorStep:
+                print('OUT OF BOUNDS! GOING RIGHT CURRENT POSITION', currentPWMPAN)
+                pass
+            else:
+                currentPWMPAN += motorStep
+            # print('current pwm value tilt:', currentPWMTILT)
+            panMotor.write(angletoPWM(currentPWMPAN))
+            time.sleep(0.2)
         else:
-            print('nothing pressed')
-            time.sleep(0.5)
+            # print('nothing pressed')
+            time.sleep(0.2)
 
-            # testBothMotors()
-            takeAPic()
-
-
-
+            # takeAPic()
 
 
 
