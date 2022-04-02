@@ -37,11 +37,7 @@ context = zmq.Context()
 socket = context.socket(zmq.REP)
 socket.bind('tcp://*:6969')
 
-while True:
-    message = socket.recv()
-    print('Recieved request', message)
-    time.sleep(1)
-    socket.send(b"world")
+
 
 
 
@@ -159,6 +155,32 @@ def main():
     tiltMotor.write(angletoPWM(0))
 
     while True:
+
+        # check if there is a received packet
+        # if there is a packet received, print it and do something else
+        message = socket.recv_string()
+        if message():
+            # print('Received request', message)
+            if message.lower() == 'getimage':
+                pass
+            elif message.lower == 'getshapes':
+                pass
+            elif message.lower == 'trackshape':
+                pass
+            elif message.lower == 'getangles':
+                pass
+            elif message.lower == 'movepanangle':
+                pass
+            elif message.lower == 'movetiltangle':
+                pass
+            elif message.lower == 'localcontrol':
+                pass
+            else:
+                print('Recieved a bad input!:', message.lower)
+                # should never get into this case here.
+        time.sleep(1)
+        socket.send(b"Completed....subprocess")
+
         # check what button is being pressed
         if getValueOfPin(displayButton):
             # print('display button pressed!')
@@ -217,7 +239,6 @@ def main():
             time.sleep(0.2)
             # testBothMotors()
             # takeAPic()
-
 
 if __name__ == '__main__':
     main()
