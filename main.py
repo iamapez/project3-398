@@ -3,6 +3,9 @@ import time
 import sys
 import cv2 as cv
 import zmq
+import base64
+import os
+import shutil
 
 # connected pwm0 (pin11) to pwm pin on top servo
 # connected pwm1(pin13) to pwm pin on bottom servo
@@ -140,6 +143,28 @@ def takePicandDisplay():
     cv.destroyAllWindows()
 
 
+def takePicandDisplayRemote():
+    cam = cv.VideoCapture(4)
+    # cv.namedWindow("CSE398")
+
+    img_counter = 0
+    ret, frame = cam.read()
+    if not ret:
+        print("failed to grab frame")
+
+    img_name = "opencv_frame_{}.png".format(img_counter)
+    cv.imwrite(img_name, frame)
+    print("{} written!".format(img_name))
+    img_counter += 1
+
+    f = open(img_name, 'rb')
+    bytes = bytearray(f.read())
+    strng = base64.b64encode(bytes)
+    socket.send(strng)
+    print('sent the encoded image to the client!')
+    f.close()
+
+
 def main():
     # main entry point for the program here
 
@@ -165,6 +190,7 @@ def main():
                 #     getImage - the Rock Pi takes an image
                 #     and sends it to the host computer over the IoT network.
                 #     The host computer displays the image on its own output screen.
+                takePicandDisplayRemote()
                 pass
             elif message.lower == 'getshapes':
                 #   getShapes - the Rock Pi takes an image and detects shapes in the image.
