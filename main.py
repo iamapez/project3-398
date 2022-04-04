@@ -1,3 +1,5 @@
+import cv2
+
 import mraa
 import time
 import sys
@@ -36,13 +38,12 @@ downButton.dir(mraa.DIR_IN)
 leftButton.dir(mraa.DIR_IN)
 rightButton.dir(mraa.DIR_IN)
 
-context = zmq.Context()
-socket = context.socket(zmq.REP)
-socket.bind('tcp://*:6969')
 
-
-
-
+class localShape:
+    def __init__(self, name, x, y):
+        self.name = name
+        self.x = x
+        self.y = y
 
 def angletoPWM(angle):
     # method to convert angle angle to pwm that is readable by the motors
@@ -160,13 +161,90 @@ def takePicandDisplayRemote():
     f = open(img_name, 'rb')
     bytes = bytearray(f.read())
     strng = base64.b64encode(bytes)
-    socket.send(strng)
-    print('sent the encoded image to the client!')
     f.close()
+
+    return strng
+
+
+def getShapes():
+    #   getShapes - the Rock Pi takes an image and detects shapes in the image.
+    #   The only shapes the Rock Pi should look for are Circle, Square, and Triangle.
+    #   The Rock Pi should send a message back to the host computer with a list of shapes.
+    #   The message should be a list of all shapes found.
+    #   Each item in the list should include the type of shape (Circle, Square, or Triangle)
+    #   and the x, y coordinates of the center of the shape in the image.
+
+    cam = cv.VideoCapture(4)
+    # cv.namedWindow("CSE398")
+
+    img_counter = 0
+    ret, frame = cam.read()
+    if not ret:
+        print("failed to grab frame")
+
+    img_name = "getShapesTempFile.png"
+    cv.imwrite(img_name, frame)
+    print("{} written!".format(img_name))
+    img_counter += 1
+
+    img = cv.imread('img_name')
+    gray = cv.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+
+# code for recieved packet
+#
+#     if message():
+#         # print('Received request', message)
+#         if message.lower() == 'getimage':
+#             #     getImage - the Rock Pi takes an image
+#             #     and sends it to the host computer over the IoT network.
+#             #     The host computer displays the image on its own output screen.
+#             response = takePicandDisplayRemote()
+#             socket.send(response)
+#         elif message.lower == 'getshapes':
+#             #   getShapes - the Rock Pi takes an image and detects shapes in the image.
+#             #   The only shapes the Rock Pi should look for are Circle, Square, and Triangle.
+#             #   The Rock Pi should send a message back to the host computer with a list of shapes.
+#             #   The message should be a list of all shapes found.
+#             #   Each item in the list should include the type of shape (Circle, Square, or Triangle)
+#             #   and the x, y coordinates of the center of the shape in the image.
+#             response = getShapes()
+#             socket.send(response)
+#             pass
+#         elif message.lower == 'trackshape':
+#             #   track shape - the shape field is either Circle, Square, or Triangle.
+#             #   The Rock pi should "track" or center the listed object to the center of the image.
+#             #   The tracking algorithm should execute for 10 seconds.  The Rock Pi should then capture
+#             #   an image and send it to the host.
+#             pass
+#         elif message.lower == 'getangles':
+#             #   getAngles - the Rock Pi should return the current angles the PTU servos are set at.
+#             pass
+#         elif message.lower == 'movepanangle':
+#             #   move pan_angle, tilt_angle - the Rock Pi should move the PTU to the corresponding angle parameters.
+#             pass
+#         elif message.lower == 'movetiltangle':
+#             #   move pan_angle, tilt_angle - the Rock Pi should move the PTU to the corresponding angle parameters.
+#             pass
+#         elif message.lower == 'localcontrol':
+#             #   localControl - the host should give control to the Rock Pi pushbuttons and wait for a message from
+#             #   the Rock Pi saying it is ready to relinquish local control.  The Rock Pi releases local control
+#             #   when the sixth pushbutton is pressed.
+#             pass
+#         else:
+#             print('Recieved a bad input!:', message.lower)
+#             # should never get into this case here.
+#     time.sleep(1)
+#     socket.send(b"Completed....subprocess")
+
+
 
 
 def main():
     # main entry point for the program here
+    context = zmq.Context()
+    socket = context.socket(zmq.REP)
+    socket.bind('tcp://*:6969')
 
     # global variables to track current position of tilt and pan motors
     currentPWMTILT = 0
@@ -183,52 +261,24 @@ def main():
 
         # check if there is a received packet
         # if there is a packet received, print it and do something else
-        message = socket.recv_string()
-        if message():
-            # print('Received request', message)
-            if message.lower() == 'getimage':
-                #     getImage - the Rock Pi takes an image
-                #     and sends it to the host computer over the IoT network.
-                #     The host computer displays the image on its own output screen.
-                takePicandDisplayRemote()
-                pass
-            elif message.lower == 'getshapes':
-                #   getShapes - the Rock Pi takes an image and detects shapes in the image.
-                #   The only shapes the Rock Pi should look for are Circle, Square, and Triangle.
-                #   The Rock Pi should send a message back to the host computer with a list of shapes.
-                #   The message should be a list of all shapes found.
-                #   Each item in the list should include the type of shape (Circle, Square, or Triangle)
-                #   and the x, y coordinates of the center of the shape in the image.
-                pass
-            elif message.lower == 'trackshape':
-                #   track shape - the shape field is either Circle, Square, or Triangle.
-                #   The Rock pi should "track" or center the listed object to the center of the image.
-                #   The tracking algorithm should execute for 10 seconds.  The Rock Pi should then capture
-                #   an image and send it to the host.
-                pass
-            elif message.lower == 'getangles':
-                #   getAngles - the Rock Pi should return the current angles the PTU servos are set at.
-                pass
-            elif message.lower == 'movepanangle':
-                #   move pan_angle, tilt_angle - the Rock Pi should move the PTU to the corresponding angle parameters.
-                pass
-            elif message.lower == 'movetiltangle':
-                #   move pan_angle, tilt_angle - the Rock Pi should move the PTU to the corresponding angle parameters.
-                pass
-            elif message.lower == 'localcontrol':
-                #   localControl - the host should give control to the Rock Pi pushbuttons and wait for a message from
-                #   the Rock Pi saying it is ready to relinquish local control.  The Rock Pi releases local control
-                #   when the sixth pushbutton is pressed.
-                pass
-            else:
-                print('Recieved a bad input!:', message.lower)
-                # should never get into this case here.
-        time.sleep(1)
-        socket.send(b"Completed....subprocess")
+        # message = socket.recv_string()
+
+        # try:
+        #     message = socket.recv(flags=0)
+        # except zmq.ZMQError as e:
+        #     print('exception raised!', e)
+
+        try:
+            message = socket.recv(flags=zmq.NOBLOCK)
+            print('message recieved', message)
+        #     test what message was recieved
+
+        except zmq.Again as e:
+            print('no message yet')
 
         # check what button is being pressed
         if getValueOfPin(displayButton):
-            # print('display button pressed!')
+            print('display button pressed!')
             takePicandDisplay()
             time.sleep(0.2)
 
@@ -237,7 +287,7 @@ def main():
             time.sleep(0.2)
 
         elif getValueOfPin(upButton):
-            # print('move it up!')
+            print('move it up!')
             if currentPWMTILT > 177 - motorStep:
                 print('OUT OF BOUNDS! GOING UP CURRENT POSITION', currentPWMTILT)
                 pass
@@ -247,7 +297,7 @@ def main():
             time.sleep(0.2)
 
         elif getValueOfPin(downButton):
-            # print('move it down!')
+            print('move it down!')
             if currentPWMTILT < 0 + motorStep:
                 print('OUT OF BOUNDS! GOING DOWN CURRENT POSITION', currentPWMTILT)
                 pass
@@ -258,7 +308,7 @@ def main():
             time.sleep(0.2)
 
         elif getValueOfPin(leftButton):
-            # print('move it left!')
+            print('move it left!')
             if currentPWMPAN < 0 + motorStep:
                 print('OUT OF BOUNDS! GOING LEFT CURRENT POSITION', currentPWMPAN)
                 pass
@@ -269,7 +319,7 @@ def main():
             time.sleep(0.2)
 
         elif getValueOfPin(rightButton):
-            # print('move it right!')
+            print('move it right!')
             if currentPWMPAN > 177 - motorStep:
                 print('OUT OF BOUNDS! GOING RIGHT CURRENT POSITION', currentPWMPAN)
                 pass
@@ -280,7 +330,7 @@ def main():
             time.sleep(0.2)
 
         else:
-            # print('nothing pressed')
+            print('nothing pressed')
             time.sleep(0.2)
             # testBothMotors()
             # takeAPic()
