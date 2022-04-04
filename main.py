@@ -149,6 +149,7 @@ def takePicandDisplay():
 
 
 def takePicandDisplayRemote():
+    # thank you! https://stackoverflow.com/questions/24791633/zeromq-pyzmq-send-jpeg-image-over-tcp
     cam = cv.VideoCapture(4)
     # cv.namedWindow("CSE398")
 
