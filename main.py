@@ -213,7 +213,6 @@ def main():
 
         # check if there is a received packet
         # if there is a packet received, print it and do something else
-        # message = socket.recv_string()
         try:
             message = socket.recv()
             # print('type message is:', type(message))
@@ -222,8 +221,8 @@ def main():
                 #     getImage - the Rock Pi takes an image
                 #     and sends it to the host computer over the IoT network.
                 #     The host computer displays the image on its own output screen.
-                response = takePicandDisplayRemote()
-                socket.send(response)
+                print('called getimage method on server!')
+                socket.send(b'getimage done!')
             elif message.lower() == 'getshapes':
                 #   getShapes - the Rock Pi takes an image and detects shapes in the image.
                 #   The only shapes the Rock Pi should look for are Circle, Square, and Triangle.
@@ -231,37 +230,42 @@ def main():
                 #   The message should be a list of all shapes found.
                 #   Each item in the list should include the type of shape (Circle, Square, or Triangle)
                 #   and the x, y coordinates of the center of the shape in the image.
-                response = getShapes()
-                socket.send(response)
-                pass
+                # response = getShapes()
+                print('called getshapes method on server!')
+                socket.send(b'getshape done!')
             elif message.lower() == 'trackshape':
                 #   track shape - the shape field is either Circle, Square, or Triangle.
                 #   The Rock pi should "track" or center the listed object to the center of the image.
                 #   The tracking algorithm should execute for 10 seconds.  The Rock Pi should then capture
                 #   an image and send it to the host.
-                print('called track shape on server!')
+                print('called trackshape on server!')
+                socket.send(b'trackshape done!')
             elif message.lower() == 'getangles':
                 #   getAngles - the Rock Pi should return the current angles the PTU servos are set at.
-                pass
+                print('called getangles method on server!')
+                socket.send(b'getangles done!')
             elif message.lower() == 'movepanangle':
                 #   move pan_angle, tilt_angle - the Rock Pi should move the PTU to the corresponding angle parameters.
-                pass
+                print('called movepanangle method on server!')
+                socket.send(b'movepanangle done!')
             elif message.lower() == 'movetiltangle':
                 #   move pan_angle, tilt_angle - the Rock Pi should move the PTU to the corresponding angle parameters.
-                pass
+                print('called movepanangle method on server!')
+                socket.send(b'movepanangle done!')
             elif message.lower() == 'localcontrol':
                 #   localControl - the host should give control to the Rock Pi pushbuttons and wait for a message from
                 #   the Rock Pi saying it is ready to relinquish local control.  The Rock Pi releases local control
                 #   when the sixth pushbutton is pressed.
-                pass
+                print('called localcontrol method on server!')
+                socket.send(b'localcontrol done!')
             else:
                 print('Recieved a bad input!:', message)
                 # should never get into this case here.
             time.sleep(1)
-            socket.send(b"Completed....subprocess")
 
         except zmq.Again as e:
             print('no message yet')
+
 
         # check what button is being pressed
         if getValueOfPin(displayButton):
