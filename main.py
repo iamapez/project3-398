@@ -9,6 +9,9 @@ import base64
 import os
 import shutil
 
+# from PIL import Image
+
+
 # connected pwm0 (pin11) to pwm pin on top servo
 # connected pwm1(pin13) to pwm pin on bottom servo
 # https://avinton.com/en/academy/install-python2-7-opencv/
@@ -192,6 +195,24 @@ def getShapes():
     gray = cv.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 
+def getImage():
+    pass
+
+
+def getShapes():
+    # getShapes - the Rock Pi takes an image and detects shapes in the image.
+    #   The only shapes the Rock Pi should look for are Circle, Square, and Triangle.
+    #   The Rock Pi should send a message back to the host computer with a list of shapes.
+    #   The message should be a list of all shapes found.
+    #   Each item in the list should include the type of shape (Circle, Square, or Triangle)
+    #   and the x, y coordinates of the center of the shape in the image.
+
+    # take image
+    # detect shapes
+    # add to list of objects, set name, x val, y val
+    # return list
+    return []
+
 def main():
     # main entry point for the program here
     context = zmq.Context()
@@ -218,21 +239,16 @@ def main():
             # print('type message is:', type(message))
             # print('message recieved', message)
             if message.lower() == 'getimage':
-                #     getImage - the Rock Pi takes an image
-                #     and sends it to the host computer over the IoT network.
-                #     The host computer displays the image on its own output screen.
-                print('called getimage method on server!')
-                socket.send(b'getimage done!')
+                # get image
+                response = takePicandDisplayRemote()
+                socket.send(response)
+                # print('Called getimage method on server!')
+                # socket.send(b'getimage done!')
             elif message.lower() == 'getshapes':
-                #   getShapes - the Rock Pi takes an image and detects shapes in the image.
-                #   The only shapes the Rock Pi should look for are Circle, Square, and Triangle.
-                #   The Rock Pi should send a message back to the host computer with a list of shapes.
-                #   The message should be a list of all shapes found.
-                #   Each item in the list should include the type of shape (Circle, Square, or Triangle)
-                #   and the x, y coordinates of the center of the shape in the image.
-                # response = getShapes()
+                response = getShapes()      # we get a list of objects of shapes here, (type,x,y)
+                socket.send(response)       # might have to clean up response so it can be decoded on client side first
                 print('called getshapes method on server!')
-                socket.send(b'getshape done!')
+                # socket.send(b'getshape done!')
             elif message.lower() == 'trackshape':
                 #   track shape - the shape field is either Circle, Square, or Triangle.
                 #   The Rock pi should "track" or center the listed object to the center of the image.
@@ -260,12 +276,12 @@ def main():
                 socket.send(b'localcontrol done!')
             else:
                 print('Recieved a bad input!:', message)
+                socket.send(b'Recieved a bad input!')
                 # should never get into this case here.
             time.sleep(1)
 
         except zmq.Again as e:
             print('no message yet')
-
 
         # check what button is being pressed
         if getValueOfPin(displayButton):
