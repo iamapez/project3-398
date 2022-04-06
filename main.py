@@ -1,13 +1,10 @@
-import cv2
-
 import mraa
 import time
-import sys
 import cv2 as cv
 import zmq
 import base64
-import os
-import shutil
+import numpy as np
+from matplotlib import pyplot as plt
 
 # from PIL import Image
 
@@ -40,6 +37,10 @@ upButton.dir(mraa.DIR_IN)
 downButton.dir(mraa.DIR_IN)
 leftButton.dir(mraa.DIR_IN)
 rightButton.dir(mraa.DIR_IN)
+
+currentPWMTILT = None
+currentPWMPAN = None
+motorStep = None
 
 
 class localShape:
@@ -209,10 +210,79 @@ def getShapes():
     #   and the x, y coordinates of the center of the shape in the image.
 
     # take image
-    # detect shapes
-    # add to list of objects, set name, x val, y val
-    # return list
-    return []
+    cam = cv.VideoCapture(4)
+    ret, frame = cam.read()
+    if not ret:
+        print("failed to grab frame")
+    # cv.imshow("test", frame)
+    img_name = "temp_detectshapes.png"
+    cv.imwrite(img_name, frame)
+
+    img = cv.imread(img_name)
+    # converting image into grayscale image
+    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+
+    # setting threshold of gray image
+    _, threshold = cv.threshold(gray, 127, 255, cv.THRESH_BINARY)
+
+    # using a findContours() function
+    contours, _ = cv.findContours(
+        threshold, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+
+    i = 0
+    listOfShapes = []
+    # list for storing names of shapes
+    for contour in contours:
+
+        # here we are ignoring first counter because 
+        # findcontour function detects whole image as shape
+        if i == 0:
+            i = 1
+            continue
+
+        # cv2.approxPloyDP() function to approximate the shape
+        approx = cv.approxPolyDP(
+            contour, 0.01 * cv.arcLength(contour, True), True)
+
+        # using drawContours() function
+        cv.drawContours(img, [contour], 0, (0, 0, 255), 5)
+
+        # finding center point of shape
+        M = cv.moments(contour)
+        if M['m00'] != 0.0:
+            x = int(M['m10'] / M['m00'])
+            y = int(M['m01'] / M['m00'])
+
+        # putting shape name at center of each shape
+        if len(approx) == 3:
+            cv.putText(img, 'Triangle', (x, y),
+                       cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            listOfShapes.append(localShape('Triangle', x, y))
+
+        elif len(approx) == 4:
+            cv.putText(img, 'Square', (x, y),
+                       cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            listOfShapes.append(localShape('Square', x, y))
+
+        elif len(approx) == 5:
+            # cv.putText(img, 'Pentagon', (x, y),
+            #            cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            pass
+
+        elif len(approx) == 6:
+            # cv.putText(img, 'Hexagon', (x, y),
+            #            cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            pass
+        else:
+            cv.putText(img, 'circle', (x, y),
+                       cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            listOfShapes.append(localShape('Circle', x, y))
+
+    if len(listOfShapes) == 0:
+        listOfShapes.append(localShape('empty list!', -1, -1))
+
+    return listOfShapes
+
 
 def main():
     # main entry point for the program here
@@ -245,11 +315,15 @@ def main():
                 socket.send(response)
                 # print('Called getimage method on server!')
                 # socket.send(b'getimage done!')
+
             elif message.lower() == 'getshapes':
-                response = getShapes()      # we get a list of objects of shapes here, (type,x,y)
-                socket.send(response)       # might have to clean up response so it can be decoded on client side first
+                response_obj = getShapes()  # we get a list of objects of shapes here, (type,x,y)
+                send_str = ''
+                for i in response_obj:
+                    send_str += (i.name, 'x:', i.x, 'y:', i.y + " ")
+                socket.send(send_str)  # might have to clean up response so it can be decoded on client side first
                 print('called getshapes method on server!')
-                # socket.send(b'getshape done!')
+
             elif message.lower() == 'trackshape':
                 #   track shape - the shape field is either Circle, Square, or Triangle.
                 #   The Rock pi should "track" or center the listed object to the center of the image.
@@ -257,24 +331,40 @@ def main():
                 #   an image and send it to the host.
                 print('called trackshape on server!')
                 socket.send(b'trackshape done!')
+
             elif message.lower() == 'getangles':
                 #   getAngles - the Rock Pi should return the current angles the PTU servos are set at.
-                print('called getangles method on server!')
-                socket.send(b'getangles done!')
-            elif message.lower() == 'movepanangle':
+                # print('called getangles method on server!')
+
+                send_str = ''
+                send_str += ('Pan Motor Angle:', currentPWMPAN + " ")
+                send_str += ('Pan Tilt Angle:', currentPWMTILT + " ")
+                socket.send(send_str)
+                send_str = ''
+
+            elif message[0:11].lower() == 'movepanangle':
                 #   move pan_angle, tilt_angle - the Rock Pi should move the PTU to the corresponding angle parameters.
                 print('called movepanangle method on server!')
+                amount = message[11:]
+                if amount > currentPWMPAN - motorStep:
+                    socket.send(b'Out of Bounds!')
+                else:
+                    panGoToPosition(amount)
+
                 socket.send(b'movepanangle done!')
+
             elif message.lower() == 'movetiltangle':
                 #   move pan_angle, tilt_angle - the Rock Pi should move the PTU to the corresponding angle parameters.
                 print('called movepanangle method on server!')
                 socket.send(b'movepanangle done!')
+
             elif message.lower() == 'localcontrol':
                 #   localControl - the host should give control to the Rock Pi pushbuttons and wait for a message from
                 #   the Rock Pi saying it is ready to relinquish local control.  The Rock Pi releases local control
                 #   when the sixth pushbutton is pressed.
                 print('called localcontrol method on server!')
                 socket.send(b'localcontrol done!')
+
             else:
                 print('Recieved a bad input!:', message)
                 socket.send(b'Recieved a bad input!')
