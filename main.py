@@ -396,6 +396,10 @@ def main():
                 #   the Rock Pi saying it is ready to relinquish local control.  The Rock Pi releases local control
                 #   when the sixth pushbutton is pressed.
                 print('called localcontrol method on server!')
+
+                global currentPWMTILT
+                global currentPWMPAN
+
                 while not getValueOfPin(terminateButton):
                     if getValueOfPin(displayButton):
                         print('display button pressed!')
@@ -404,7 +408,7 @@ def main():
 
                     elif getValueOfPin(terminateButton):
                         print('terminate connection!')
-                        time.sleep(0.2)
+                        break
 
                     elif getValueOfPin(upButton):
                         print('move it up!')
