@@ -4,7 +4,7 @@ import cv2 as cv
 import zmq
 import base64
 import numpy as np
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 
 # from PIL import Image
 
@@ -38,10 +38,14 @@ downButton.dir(mraa.DIR_IN)
 leftButton.dir(mraa.DIR_IN)
 rightButton.dir(mraa.DIR_IN)
 
-currentPWMTILT = None
-currentPWMPAN = None
+# currentPWMTILT = None
+# currentPWMPAN = None
+global currentPWMTILT
+global currentPWMPAN
 motorStep = None
 
+currentPWMTILT = 0
+currentPWMPAN = 0
 
 class localShape:
     def __init__(self, name, x, y):
@@ -61,6 +65,26 @@ def angletoPWM(angle):
     return temp
 
 
+def getPWMTILT():
+    global currentPWMTILT
+    return currentPWMTILT
+
+
+def getPWMPAN():
+    global currentPWMPAN
+    return currentPWMPAN
+
+
+def setPWMTILT(val):
+    global currentPWMTILT
+    currentPWMTILT = val
+
+
+def setPWMPAN(val):
+    global currentPWMPAN
+    currentPWMPAN = val
+
+
 def testBothMotors():
     # test: have both motors move from min to max value
     for i in range(0, 177):
@@ -68,6 +92,15 @@ def testBothMotors():
         print("converted", angletoPWM(i))
         tiltMotor.write(angletoPWM(i))
         panMotor.write(angletoPWM(i))
+        setPWMPAN(i)
+        setPWMTILT(i)
+
+        # print('in test motors pan', currentPWMPAN)
+        # print('in test motors tilt', currentPWMTILT)
+        #
+        # print('in test motors pan get :', getPWMPAN())
+        # print('in test motors tilt get:', getPWMTILT())
+
         time.sleep(0.1)
 
 
@@ -291,11 +324,9 @@ def main():
     socket.bind('tcp://*:6969')
 
     # global variables to track current position of tilt and pan motors
-    currentPWMTILT = 0
-    currentPWMPAN = 0
 
     # change the motor step here (makes slower or faster depending on accuracy)
-    motorStep = 5
+    motorStep = 10
 
     # before doing anything, initalize both motors to positions 0
     panMotor.write(angletoPWM(0))
@@ -337,8 +368,9 @@ def main():
                 # print('called getangles method on server!')
 
                 send_str = ''
-                send_str += ('Pan Motor Angle:', currentPWMPAN + " ")
-                send_str += ('Pan Tilt Angle:', currentPWMTILT + " ")
+                send_str += ('Pan Motor Angle: ' + str(getPWMPAN()))
+                send_str += '\n'
+                send_str += ('Pan Tilt Angle: ' + str(getPWMTILT()))
                 socket.send(send_str)
                 send_str = ''
 
@@ -346,6 +378,7 @@ def main():
                 #   move pan_angle, tilt_angle - the Rock Pi should move the PTU to the corresponding angle parameters.
                 print('called movepanangle method on server!')
                 amount = message[11:]
+                print('amount = ', amount)
                 if amount > currentPWMPAN - motorStep:
                     socket.send(b'Out of Bounds!')
                 else:
@@ -363,6 +396,65 @@ def main():
                 #   the Rock Pi saying it is ready to relinquish local control.  The Rock Pi releases local control
                 #   when the sixth pushbutton is pressed.
                 print('called localcontrol method on server!')
+                while not getValueOfPin(terminateButton):
+                    if getValueOfPin(displayButton):
+                        print('display button pressed!')
+                        takePicandDisplay()
+                        time.sleep(0.2)
+
+                    elif getValueOfPin(terminateButton):
+                        print('terminate connection!')
+                        time.sleep(0.2)
+
+                    elif getValueOfPin(upButton):
+                        print('move it up!')
+                        if currentPWMTILT > 177 - motorStep:
+                            print('OUT OF BOUNDS! GOING UP CURRENT POSITION', currentPWMTILT)
+                            pass
+                        else:
+                            currentPWMTILT += motorStep
+                        tiltMotor.write(angletoPWM(currentPWMTILT))
+                        time.sleep(0.2)
+
+                    elif getValueOfPin(downButton):
+                        print('move it down!')
+                        if currentPWMTILT < 0 + motorStep:
+                            print('OUT OF BOUNDS! GOING DOWN CURRENT POSITION', currentPWMTILT)
+                            pass
+                        else:
+                            currentPWMTILT -= motorStep
+                        # print('current pwm value tilt:', currentPWMTILT)
+                        tiltMotor.write(angletoPWM(currentPWMTILT))
+                        time.sleep(0.2)
+
+                    elif getValueOfPin(leftButton):
+                        print('move it left!')
+                        if currentPWMPAN < 0 + motorStep:
+                            print('OUT OF BOUNDS! GOING LEFT CURRENT POSITION', currentPWMPAN)
+                            pass
+                        else:
+                            currentPWMPAN -= motorStep
+                        # print('current pwm value tilt:', currentPWMTILT)
+                        panMotor.write(angletoPWM(currentPWMPAN))
+                        time.sleep(0.2)
+
+                    elif getValueOfPin(rightButton):
+                        print('move it right!')
+                        if currentPWMPAN > 177 - motorStep:
+                            print('OUT OF BOUNDS! GOING RIGHT CURRENT POSITION', currentPWMPAN)
+                            pass
+                        else:
+                            currentPWMPAN += motorStep
+                        # print('current pwm value tilt:', currentPWMTILT)
+                        panMotor.write(angletoPWM(currentPWMPAN))
+                        time.sleep(0.2)
+
+                    else:
+                        print('nothing pressed')
+                        time.sleep(0.2)
+                        # testBothMotors()
+                        # takeAPic()
+
                 socket.send(b'localcontrol done!')
 
             else:
@@ -375,63 +467,7 @@ def main():
             print('no message yet')
 
         # check what button is being pressed
-        if getValueOfPin(displayButton):
-            print('display button pressed!')
-            takePicandDisplay()
-            time.sleep(0.2)
 
-        elif getValueOfPin(terminateButton):
-            print('terminate connection!')
-            time.sleep(0.2)
-
-        elif getValueOfPin(upButton):
-            print('move it up!')
-            if currentPWMTILT > 177 - motorStep:
-                print('OUT OF BOUNDS! GOING UP CURRENT POSITION', currentPWMTILT)
-                pass
-            else:
-                currentPWMTILT += motorStep
-            tiltMotor.write(angletoPWM(currentPWMTILT))
-            time.sleep(0.2)
-
-        elif getValueOfPin(downButton):
-            print('move it down!')
-            if currentPWMTILT < 0 + motorStep:
-                print('OUT OF BOUNDS! GOING DOWN CURRENT POSITION', currentPWMTILT)
-                pass
-            else:
-                currentPWMTILT -= motorStep
-            # print('current pwm value tilt:', currentPWMTILT)
-            tiltMotor.write(angletoPWM(currentPWMTILT))
-            time.sleep(0.2)
-
-        elif getValueOfPin(leftButton):
-            print('move it left!')
-            if currentPWMPAN < 0 + motorStep:
-                print('OUT OF BOUNDS! GOING LEFT CURRENT POSITION', currentPWMPAN)
-                pass
-            else:
-                currentPWMPAN -= motorStep
-            # print('current pwm value tilt:', currentPWMTILT)
-            panMotor.write(angletoPWM(currentPWMPAN))
-            time.sleep(0.2)
-
-        elif getValueOfPin(rightButton):
-            print('move it right!')
-            if currentPWMPAN > 177 - motorStep:
-                print('OUT OF BOUNDS! GOING RIGHT CURRENT POSITION', currentPWMPAN)
-                pass
-            else:
-                currentPWMPAN += motorStep
-            # print('current pwm value tilt:', currentPWMTILT)
-            panMotor.write(angletoPWM(currentPWMPAN))
-            time.sleep(0.2)
-
-        else:
-            print('nothing pressed')
-            time.sleep(0.2)
-            # testBothMotors()
-            # takeAPic()
 
 
 if __name__ == '__main__':
