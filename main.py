@@ -106,21 +106,23 @@ def testBothMotors():
 
 def tiltGoToPosition(val):
     # used for bringing the tilt motor from 0 to a position val
-    for i in range(0, val):
+    for i in range(0, val+1):
         print("value of i passed:", i)
         print("converted", angletoPWM(i))
         tiltMotor.write(angletoPWM(i))
         # panMotor.write(angletoPWM(i))
+        setPWMTILT(i)
         time.sleep(0.1)
 
 
 def panGoToPosition(val):
     # used for bringing the pan motor from 0 to a position val
-    for i in range(0, val):
+    for i in range(0, val+1):
         print("value of i passed:", i)
         print("converted", angletoPWM(i))
         # tiltMotor.write(angletoPWM(i))
         panMotor.write(angletoPWM(i))
+        setPWMPAN(i)
         time.sleep(0.1)
 
 
@@ -374,21 +376,28 @@ def main():
                 socket.send(send_str)
                 send_str = ''
 
-            elif message[0:11].lower() == 'movepanangle':
+            elif message[0:12].lower() == 'movepanangle':
                 #   move pan_angle, tilt_angle - the Rock Pi should move the PTU to the corresponding angle parameters.
                 print('called movepanangle method on server!')
-                amount = message[11:]
-                print('amount = ', amount)
-                if amount > currentPWMPAN - motorStep:
+                # print('message:', message)
+                amount = int(message[13:])
+                # print('amount = ', amount)
+                if amount < 0 or amount > 177:
                     socket.send(b'Out of Bounds!')
                 else:
                     panGoToPosition(amount)
 
                 socket.send(b'movepanangle done!')
 
-            elif message.lower() == 'movetiltangle':
+            elif message[0:13].lower() == 'movetiltangle':
                 #   move pan_angle, tilt_angle - the Rock Pi should move the PTU to the corresponding angle parameters.
                 print('called movepanangle method on server!')
+                amount = int(message[14:])
+                if amount < 0 or amount > 177:
+                    socket.send(b'Out of Bounds!')
+                else:
+                    tiltGoToPosition(amount)
+
                 socket.send(b'movepanangle done!')
 
             elif message.lower() == 'localcontrol':
