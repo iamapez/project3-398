@@ -4,6 +4,7 @@ import cv2 as cv
 import zmq
 import base64
 import numpy as np
+
 # from matplotlib import pyplot as plt
 
 # from PIL import Image
@@ -42,10 +43,15 @@ rightButton.dir(mraa.DIR_IN)
 # currentPWMPAN = None
 global currentPWMTILT
 global currentPWMPAN
+global x
+global y
 motorStep = None
 
 currentPWMTILT = 0
 currentPWMPAN = 0
+x = 0
+y = 0
+
 
 class localShape:
     def __init__(self, name, x, y):
@@ -106,7 +112,7 @@ def testBothMotors():
 
 def tiltGoToPosition(val):
     # used for bringing the tilt motor from 0 to a position val
-    for i in range(0, val+1):
+    for i in range(0, val + 1):
         print("value of i passed:", i)
         print("converted", angletoPWM(i))
         tiltMotor.write(angletoPWM(i))
@@ -117,7 +123,7 @@ def tiltGoToPosition(val):
 
 def panGoToPosition(val):
     # used for bringing the pan motor from 0 to a position val
-    for i in range(0, val+1):
+    for i in range(0, val + 1):
         print("value of i passed:", i)
         print("converted", angletoPWM(i))
         # tiltMotor.write(angletoPWM(i))
@@ -207,31 +213,6 @@ def takePicandDisplayRemote():
     return strng
 
 
-def getShapes():
-    #   getShapes - the Rock Pi takes an image and detects shapes in the image.
-    #   The only shapes the Rock Pi should look for are Circle, Square, and Triangle.
-    #   The Rock Pi should send a message back to the host computer with a list of shapes.
-    #   The message should be a list of all shapes found.
-    #   Each item in the list should include the type of shape (Circle, Square, or Triangle)
-    #   and the x, y coordinates of the center of the shape in the image.
-
-    cam = cv.VideoCapture(4)
-    # cv.namedWindow("CSE398")
-
-    img_counter = 0
-    ret, frame = cam.read()
-    if not ret:
-        print("failed to grab frame")
-
-    img_name = "getShapesTempFile.png"
-    cv.imwrite(img_name, frame)
-    print("{} written!".format(img_name))
-    img_counter += 1
-
-    img = cv.imread('img_name')
-    gray = cv.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-
 def getImage():
     pass
 
@@ -258,11 +239,10 @@ def getShapes():
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
 
     # setting threshold of gray image
-    _, threshold = cv.threshold(gray, 127, 255, cv.THRESH_BINARY)
+    _, threshold = cv.threshold(gray, 60, 255, cv.THRESH_BINARY)
 
     # using a findContours() function
-    contours, _ = cv.findContours(
-        threshold, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    image, contours, hierarchy = cv.findContours(threshold, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 
     i = 0
     listOfShapes = []
@@ -276,14 +256,17 @@ def getShapes():
             continue
 
         # cv2.approxPloyDP() function to approximate the shape
-        approx = cv.approxPolyDP(
-            contour, 0.01 * cv.arcLength(contour, True), True)
+        approx = cv.approxPolyDP(contour, 0.01 * cv.arcLength(contour, True), True)
 
         # using drawContours() function
         cv.drawContours(img, [contour], 0, (0, 0, 255), 5)
 
         # finding center point of shape
         M = cv.moments(contour)
+
+        global x
+        global y
+
         if M['m00'] != 0.0:
             x = int(M['m10'] / M['m00'])
             y = int(M['m01'] / M['m00'])
@@ -315,6 +298,10 @@ def getShapes():
 
     if len(listOfShapes) == 0:
         listOfShapes.append(localShape('empty list!', -1, -1))
+
+    cv.imshow('shapes', img)
+    cv.waitKey(0)
+    cv.destroyAllWindows()
 
     return listOfShapes
 
@@ -353,7 +340,11 @@ def main():
                 response_obj = getShapes()  # we get a list of objects of shapes here, (type,x,y)
                 send_str = ''
                 for i in response_obj:
-                    send_str += (i.name, 'x:', i.x, 'y:', i.y + " ")
+                    # send_str += (str(i.name), 'x:',  str(i.x), 'y:', str(i.y))
+                    print('name:', i.name)
+                    print('x:', i.x)
+                    print('y:', i.y)
+                    send_str += '\n'
                 socket.send(send_str)  # might have to clean up response so it can be decoded on client side first
                 print('called getshapes method on server!')
 
@@ -480,7 +471,6 @@ def main():
             print('no message yet')
 
         # check what button is being pressed
-
 
 
 if __name__ == '__main__':
