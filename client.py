@@ -1,4 +1,4 @@
-#import shutil
+# import shutil
 import shutil
 import string
 import base64
@@ -8,7 +8,7 @@ import os
 
 context = zmq.Context()
 
-#Socket to talk to server
+# Socket to talk to server
 print("Connecting to hello world server...")
 socket = context.socket(zmq.REQ)
 socket.connect("tcp://10.144.113.4:6969")
@@ -25,6 +25,16 @@ socket.connect("tcp://10.144.113.4:6969")
 #     filteredMessage = message.decode("utf-8")
 #     print("Received reply %s [ %s ]" % (request, filteredMessage))
 
+
+def checkStatus(message):
+    if ((message == 'trackshape done!') or (message == 'getimage done!') or (message == 'getangles done!') or (
+            message == 'movetiltangle done!') or (message == 'movepanangle done!') or (
+            message == 'localcontrol done!')):
+        print("Success!!")
+    else:
+        print("Unsuccessful")
+
+
 while 1:
     userInput = ''
     userInput = input('What command would you like to use?')
@@ -38,17 +48,17 @@ while 1:
             f.write(ba)
             f.close()
 
-
             im = Image.open(r"receivedimage.jpg")
             im.show()
             print("Got here")
             if im is None:
-                 #image = cv.imread(image_filename)
-                 #cv.imshow("Received Image", image)
-                 os.remove(im)
+                # image = cv.imread(image_filename)
+                # cv.imshow("Received Image", image)
+                os.remove(im)
 
         except Exception as b:
             print('Error while sending the message!')
+
     elif userInput.lower() == 'getshapes':
         try:
             socket.send(b"getshapes")
@@ -105,9 +115,3 @@ while 1:
             print('Error while sending the message!')
     else:
         print('BAD USER INPUT! DID NOT SEND ANYTHING')
-
-def checkStatus(message):
-    if((message == 'trackshape done!') or (message == 'getimage done!') or (message == 'getangles done!') or (message == 'movetiltangle done!') or (message == 'movepanangle done!') or (message == 'localcontrol done!')):
-        print("Success!!")
-    else:
-        print("Unsuccessful")

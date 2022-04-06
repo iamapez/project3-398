@@ -1,13 +1,13 @@
-import cv2
-
 import mraa
 import time
-import sys
 import cv2 as cv
 import zmq
 import base64
-import os
-import shutil
+import numpy as np
+# from matplotlib import pyplot as plt
+
+# from PIL import Image
+
 
 # connected pwm0 (pin11) to pwm pin on top servo
 # connected pwm1(pin13) to pwm pin on bottom servo
@@ -38,6 +38,14 @@ downButton.dir(mraa.DIR_IN)
 leftButton.dir(mraa.DIR_IN)
 rightButton.dir(mraa.DIR_IN)
 
+# currentPWMTILT = None
+# currentPWMPAN = None
+global currentPWMTILT
+global currentPWMPAN
+motorStep = None
+
+currentPWMTILT = 0
+currentPWMPAN = 0
 
 class localShape:
     def __init__(self, name, x, y):
@@ -57,6 +65,26 @@ def angletoPWM(angle):
     return temp
 
 
+def getPWMTILT():
+    global currentPWMTILT
+    return currentPWMTILT
+
+
+def getPWMPAN():
+    global currentPWMPAN
+    return currentPWMPAN
+
+
+def setPWMTILT(val):
+    global currentPWMTILT
+    currentPWMTILT = val
+
+
+def setPWMPAN(val):
+    global currentPWMPAN
+    currentPWMPAN = val
+
+
 def testBothMotors():
     # test: have both motors move from min to max value
     for i in range(0, 177):
@@ -64,6 +92,15 @@ def testBothMotors():
         print("converted", angletoPWM(i))
         tiltMotor.write(angletoPWM(i))
         panMotor.write(angletoPWM(i))
+        setPWMPAN(i)
+        setPWMTILT(i)
+
+        # print('in test motors pan', currentPWMPAN)
+        # print('in test motors tilt', currentPWMTILT)
+        #
+        # print('in test motors pan get :', getPWMPAN())
+        # print('in test motors tilt get:', getPWMTILT())
+
         time.sleep(0.1)
 
 
@@ -146,6 +183,7 @@ def takePicandDisplay():
 
 
 def takePicandDisplayRemote():
+    # thank you! https://stackoverflow.com/questions/24791633/zeromq-pyzmq-send-jpeg-image-over-tcp
     cam = cv.VideoCapture(4)
     # cv.namedWindow("CSE398")
 
@@ -192,6 +230,93 @@ def getShapes():
     gray = cv.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 
+def getImage():
+    pass
+
+
+def getShapes():
+    # getShapes - the Rock Pi takes an image and detects shapes in the image.
+    #   The only shapes the Rock Pi should look for are Circle, Square, and Triangle.
+    #   The Rock Pi should send a message back to the host computer with a list of shapes.
+    #   The message should be a list of all shapes found.
+    #   Each item in the list should include the type of shape (Circle, Square, or Triangle)
+    #   and the x, y coordinates of the center of the shape in the image.
+
+    # take image
+    cam = cv.VideoCapture(4)
+    ret, frame = cam.read()
+    if not ret:
+        print("failed to grab frame")
+    # cv.imshow("test", frame)
+    img_name = "temp_detectshapes.png"
+    cv.imwrite(img_name, frame)
+
+    img = cv.imread(img_name)
+    # converting image into grayscale image
+    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+
+    # setting threshold of gray image
+    _, threshold = cv.threshold(gray, 127, 255, cv.THRESH_BINARY)
+
+    # using a findContours() function
+    contours, _ = cv.findContours(
+        threshold, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+
+    i = 0
+    listOfShapes = []
+    # list for storing names of shapes
+    for contour in contours:
+
+        # here we are ignoring first counter because 
+        # findcontour function detects whole image as shape
+        if i == 0:
+            i = 1
+            continue
+
+        # cv2.approxPloyDP() function to approximate the shape
+        approx = cv.approxPolyDP(
+            contour, 0.01 * cv.arcLength(contour, True), True)
+
+        # using drawContours() function
+        cv.drawContours(img, [contour], 0, (0, 0, 255), 5)
+
+        # finding center point of shape
+        M = cv.moments(contour)
+        if M['m00'] != 0.0:
+            x = int(M['m10'] / M['m00'])
+            y = int(M['m01'] / M['m00'])
+
+        # putting shape name at center of each shape
+        if len(approx) == 3:
+            cv.putText(img, 'Triangle', (x, y),
+                       cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            listOfShapes.append(localShape('Triangle', x, y))
+
+        elif len(approx) == 4:
+            cv.putText(img, 'Square', (x, y),
+                       cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            listOfShapes.append(localShape('Square', x, y))
+
+        elif len(approx) == 5:
+            # cv.putText(img, 'Pentagon', (x, y),
+            #            cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            pass
+
+        elif len(approx) == 6:
+            # cv.putText(img, 'Hexagon', (x, y),
+            #            cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            pass
+        else:
+            cv.putText(img, 'circle', (x, y),
+                       cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            listOfShapes.append(localShape('Circle', x, y))
+
+    if len(listOfShapes) == 0:
+        listOfShapes.append(localShape('empty list!', -1, -1))
+
+    return listOfShapes
+
+
 def main():
     # main entry point for the program here
     context = zmq.Context()
@@ -199,11 +324,9 @@ def main():
     socket.bind('tcp://*:6969')
 
     # global variables to track current position of tilt and pan motors
-    currentPWMTILT = 0
-    currentPWMPAN = 0
 
     # change the motor step here (makes slower or faster depending on accuracy)
-    motorStep = 5
+    motorStep = 10
 
     # before doing anything, initalize both motors to positions 0
     panMotor.write(angletoPWM(0))
@@ -218,21 +341,20 @@ def main():
             # print('type message is:', type(message))
             # print('message recieved', message)
             if message.lower() == 'getimage':
-                #     getImage - the Rock Pi takes an image
-                #     and sends it to the host computer over the IoT network.
-                #     The host computer displays the image on its own output screen.
-                print('called getimage method on server!')
-                socket.send(b'getimage done!')
+                # get image
+                response = takePicandDisplayRemote()
+                socket.send(response)
+                # print('Called getimage method on server!')
+                # socket.send(b'getimage done!')
+
             elif message.lower() == 'getshapes':
-                #   getShapes - the Rock Pi takes an image and detects shapes in the image.
-                #   The only shapes the Rock Pi should look for are Circle, Square, and Triangle.
-                #   The Rock Pi should send a message back to the host computer with a list of shapes.
-                #   The message should be a list of all shapes found.
-                #   Each item in the list should include the type of shape (Circle, Square, or Triangle)
-                #   and the x, y coordinates of the center of the shape in the image.
-                # response = getShapes()
+                response_obj = getShapes()  # we get a list of objects of shapes here, (type,x,y)
+                send_str = ''
+                for i in response_obj:
+                    send_str += (i.name, 'x:', i.x, 'y:', i.y + " ")
+                socket.send(send_str)  # might have to clean up response so it can be decoded on client side first
                 print('called getshapes method on server!')
-                socket.send(b'getshape done!')
+
             elif message.lower() == 'trackshape':
                 #   track shape - the shape field is either Circle, Square, or Triangle.
                 #   The Rock pi should "track" or center the listed object to the center of the image.
@@ -240,91 +362,116 @@ def main():
                 #   an image and send it to the host.
                 print('called trackshape on server!')
                 socket.send(b'trackshape done!')
+
             elif message.lower() == 'getangles':
                 #   getAngles - the Rock Pi should return the current angles the PTU servos are set at.
-                print('called getangles method on server!')
-                socket.send(b'getangles done!')
-            elif message.lower() == 'movepanangle':
+                # print('called getangles method on server!')
+
+                send_str = ''
+                send_str += ('Pan Motor Angle: ' + str(getPWMPAN()))
+                send_str += '\n'
+                send_str += ('Pan Tilt Angle: ' + str(getPWMTILT()))
+                socket.send(send_str)
+                send_str = ''
+
+            elif message[0:11].lower() == 'movepanangle':
                 #   move pan_angle, tilt_angle - the Rock Pi should move the PTU to the corresponding angle parameters.
                 print('called movepanangle method on server!')
+                amount = message[11:]
+                print('amount = ', amount)
+                if amount > currentPWMPAN - motorStep:
+                    socket.send(b'Out of Bounds!')
+                else:
+                    panGoToPosition(amount)
+
                 socket.send(b'movepanangle done!')
+
             elif message.lower() == 'movetiltangle':
                 #   move pan_angle, tilt_angle - the Rock Pi should move the PTU to the corresponding angle parameters.
                 print('called movepanangle method on server!')
                 socket.send(b'movepanangle done!')
+
             elif message.lower() == 'localcontrol':
                 #   localControl - the host should give control to the Rock Pi pushbuttons and wait for a message from
                 #   the Rock Pi saying it is ready to relinquish local control.  The Rock Pi releases local control
                 #   when the sixth pushbutton is pressed.
                 print('called localcontrol method on server!')
+
+                global currentPWMTILT
+                global currentPWMPAN
+
+                while not getValueOfPin(terminateButton):
+                    if getValueOfPin(displayButton):
+                        print('display button pressed!')
+                        takePicandDisplay()
+                        time.sleep(0.2)
+
+                    elif getValueOfPin(terminateButton):
+                        print('terminate connection!')
+                        break
+
+                    elif getValueOfPin(upButton):
+                        print('move it up!')
+                        if currentPWMTILT > 177 - motorStep:
+                            print('OUT OF BOUNDS! GOING UP CURRENT POSITION', currentPWMTILT)
+                            pass
+                        else:
+                            currentPWMTILT += motorStep
+                        tiltMotor.write(angletoPWM(currentPWMTILT))
+                        time.sleep(0.2)
+
+                    elif getValueOfPin(downButton):
+                        print('move it down!')
+                        if currentPWMTILT < 0 + motorStep:
+                            print('OUT OF BOUNDS! GOING DOWN CURRENT POSITION', currentPWMTILT)
+                            pass
+                        else:
+                            currentPWMTILT -= motorStep
+                        # print('current pwm value tilt:', currentPWMTILT)
+                        tiltMotor.write(angletoPWM(currentPWMTILT))
+                        time.sleep(0.2)
+
+                    elif getValueOfPin(leftButton):
+                        print('move it left!')
+                        if currentPWMPAN < 0 + motorStep:
+                            print('OUT OF BOUNDS! GOING LEFT CURRENT POSITION', currentPWMPAN)
+                            pass
+                        else:
+                            currentPWMPAN -= motorStep
+                        # print('current pwm value tilt:', currentPWMTILT)
+                        panMotor.write(angletoPWM(currentPWMPAN))
+                        time.sleep(0.2)
+
+                    elif getValueOfPin(rightButton):
+                        print('move it right!')
+                        if currentPWMPAN > 177 - motorStep:
+                            print('OUT OF BOUNDS! GOING RIGHT CURRENT POSITION', currentPWMPAN)
+                            pass
+                        else:
+                            currentPWMPAN += motorStep
+                        # print('current pwm value tilt:', currentPWMTILT)
+                        panMotor.write(angletoPWM(currentPWMPAN))
+                        time.sleep(0.2)
+
+                    else:
+                        print('nothing pressed')
+                        time.sleep(0.2)
+                        # testBothMotors()
+                        # takeAPic()
+
                 socket.send(b'localcontrol done!')
+
             else:
                 print('Recieved a bad input!:', message)
+                socket.send(b'Recieved a bad input!')
                 # should never get into this case here.
             time.sleep(1)
 
         except zmq.Again as e:
             print('no message yet')
 
-
         # check what button is being pressed
-        if getValueOfPin(displayButton):
-            print('display button pressed!')
-            takePicandDisplay()
-            time.sleep(0.2)
 
-        elif getValueOfPin(terminateButton):
-            print('terminate connection!')
-            time.sleep(0.2)
-
-        elif getValueOfPin(upButton):
-            print('move it up!')
-            if currentPWMTILT > 177 - motorStep:
-                print('OUT OF BOUNDS! GOING UP CURRENT POSITION', currentPWMTILT)
-                pass
-            else:
-                currentPWMTILT += motorStep
-            tiltMotor.write(angletoPWM(currentPWMTILT))
-            time.sleep(0.2)
-
-        elif getValueOfPin(downButton):
-            print('move it down!')
-            if currentPWMTILT < 0 + motorStep:
-                print('OUT OF BOUNDS! GOING DOWN CURRENT POSITION', currentPWMTILT)
-                pass
-            else:
-                currentPWMTILT -= motorStep
-            # print('current pwm value tilt:', currentPWMTILT)
-            tiltMotor.write(angletoPWM(currentPWMTILT))
-            time.sleep(0.2)
-
-        elif getValueOfPin(leftButton):
-            print('move it left!')
-            if currentPWMPAN < 0 + motorStep:
-                print('OUT OF BOUNDS! GOING LEFT CURRENT POSITION', currentPWMPAN)
-                pass
-            else:
-                currentPWMPAN -= motorStep
-            # print('current pwm value tilt:', currentPWMTILT)
-            panMotor.write(angletoPWM(currentPWMPAN))
-            time.sleep(0.2)
-
-        elif getValueOfPin(rightButton):
-            print('move it right!')
-            if currentPWMPAN > 177 - motorStep:
-                print('OUT OF BOUNDS! GOING RIGHT CURRENT POSITION', currentPWMPAN)
-                pass
-            else:
-                currentPWMPAN += motorStep
-            # print('current pwm value tilt:', currentPWMTILT)
-            panMotor.write(angletoPWM(currentPWMPAN))
-            time.sleep(0.2)
-
-        else:
-            print('nothing pressed')
-            time.sleep(0.2)
-            # testBothMotors()
-            # takeAPic()
 
 
 if __name__ == '__main__':
