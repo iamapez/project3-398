@@ -70,19 +70,31 @@ while 1:
             print(message.decode("utf-8"))
         except Exception as b:
             print('Error while sending the message!')
-    elif userInput.lower() == 'movepanangle':
+    elif userInput[0:12].lower() == 'movepanangle':
         try:
-            socket.send(b"movepanangle")
+            amount = userInput[13:]
+            print(amount)
+            status = 'movepanangle '
+            status += amount
+            status.encode('ascii')
+            socket.send_string(status,encoding = 'utf-8')
             message = socket.recv()
             print(message.decode("utf-8"))
         except Exception as b:
+            print(b)
             print('Error while sending the message!')
-    elif userInput.lower() == 'movetiltangle':
+    elif userInput[0:13].lower() == 'movetiltangle':
         try:
-            socket.send(b"movetiltangle")
+            amount = userInput[14:]
+            print(amount)
+            status = 'movetiltangle '
+            status += amount
+            status.encode('ascii')
+            socket.send_string(status, encoding='utf-8')
             message = socket.recv()
             print(message.decode("utf-8"))
         except Exception as b:
+            print(b)
             print('Error while sending the message!')
     elif userInput.lower() == 'localcontrol':
         try:
