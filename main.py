@@ -471,12 +471,11 @@ def main():
                 print('Recieved a bad input!:', message)
                 socket.send(b'Recieved a bad input!')
                 # should never get into this case here.
+
             time.sleep(1)
 
         except zmq.Again as e:
             print('no message yet')
-
-        # check what button is being pressed
 
 
 if __name__ == '__main__':
