@@ -3,7 +3,7 @@ import shutil
 import string
 import base64
 import zmq
-from PIL import Image
+# from PIL import Image
 import os
 
 context = zmq.Context()
@@ -11,7 +11,7 @@ context = zmq.Context()
 # Socket to talk to server
 print("Connecting to hello world server...")
 socket = context.socket(zmq.REQ)
-socket.connect("tcp://10.144.113.4:6969")
+socket.connect("tcp://10.144.113.93:6969")
 
 
 # testing
@@ -37,7 +37,7 @@ def checkStatus(message):
 
 while 1:
     userInput = ''
-    userInput = input('What command would you like to use?')
+    userInput = raw_input('What command would you like to use?')
     if userInput.lower() == 'getimage':
         try:
             socket.send(b"getimage")

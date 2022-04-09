@@ -341,10 +341,16 @@ def main():
                 send_str = ''
                 for i in response_obj:
                     # send_str += (str(i.name), 'x:',  str(i.x), 'y:', str(i.y))
+
                     print('name:', i.name)
                     print('x:', i.x)
                     print('y:', i.y)
-                    send_str += '\n'
+
+                    send_str += 'name: ' + str(i.name) + ' \n'
+                    send_str += 'x: ' + str(i.x) + ' \n'
+                    send_str += 'y: ' + str(i.y) + '\n'
+
+                print('value of send string:', send_str)
                 socket.send(send_str)  # might have to clean up response so it can be decoded on client side first
                 print('called getshapes method on server!')
 
