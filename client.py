@@ -38,6 +38,7 @@ def checkStatus(message):
 while 1:
     userInput = ''
     userInput = raw_input('What command would you like to use?')
+    # temp = userInput[0:10].lower()
     if userInput.lower() == 'getimage':
         try:
             socket.send(b"getimage")
@@ -66,9 +67,9 @@ while 1:
             print(message.decode("utf-8"))
         except Exception as b:
             print('Error while sending the message!')
-    elif userInput.lower() == 'trackshape':
+    elif userInput[0:10].lower() == 'trackshape':
         try:
-            socket.send(b"trackshape")
+            socket.send(userInput.lower())
             message = socket.recv()
             print(message.decode("utf-8"))
         except Exception as b:

@@ -4,6 +4,7 @@ import cv2 as cv
 import zmq
 import base64
 import numpy as np
+import time
 
 # from matplotlib import pyplot as plt
 
@@ -306,6 +307,40 @@ def getShapes():
     return listOfShapes
 
 
+def getCoordsOfObjectWeWant():
+    pass
+
+
+def trackShape(type1):
+    t_end = time.time() + 10
+
+    print('time to end exeuction:', t_end)
+    while time.time() < t_end:
+        # open a video stream
+        cam = cv.VideoCapture(4)
+        if not cam.isOpened():
+            print("Cannot open camera")
+            exit()
+        while True:
+            # camture frame-by-frame
+            # print('current time:', time.time())
+            ret, frame = cam.read()
+            # if frame is read correctly ret is True
+            if not ret:
+                print("Can't receive frame (stream end?). Exiting ...")
+                break
+            # Our operations on the frame come here
+            # Display the resulting frame
+            cv.imshow('frame', frame)
+            if cv.waitKey(1) == ord('q'):
+                break
+            if time.time() >= t_end:
+                break
+        # When everything done, release the camture
+        cam.release()
+        cv.destroyAllWindows()
+
+
 def main():
     # main entry point for the program here
     context = zmq.Context()
@@ -315,7 +350,7 @@ def main():
     # global variables to track current position of tilt and pan motors
 
     # change the motor step here (makes slower or faster depending on accuracy)
-    motorStep = 10
+    motorStep = 20
 
     # before doing anything, initalize both motors to positions 0
     panMotor.write(angletoPWM(0))
@@ -328,7 +363,7 @@ def main():
         try:
             message = socket.recv()
             # print('type message is:', type(message))
-            # print('message recieved', message)
+            print('message recieved', message)
             if message.lower() == 'getimage':
                 # get image
                 response = takePicandDisplayRemote()
@@ -346,20 +381,35 @@ def main():
                     print('x:', i.x)
                     print('y:', i.y)
 
-                    send_str += 'name: ' + str(i.name) + ' \n'
-                    send_str += 'x: ' + str(i.x) + ' \n'
-                    send_str += 'y: ' + str(i.y) + '\n'
+                    send_str += 'type: ' + str(i.name) + ' '
+                    send_str += 'x: ' + str(i.x) + ' '
+                    send_str += 'y: ' + str(i.y) + ' '
 
                 print('value of send string:', send_str)
                 socket.send(send_str)  # might have to clean up response so it can be decoded on client side first
                 print('called getshapes method on server!')
 
-            elif message.lower() == 'trackshape':
+            elif message[0:10].lower() == 'trackshape':
                 #   track shape - the shape field is either Circle, Square, or Triangle.
                 #   The Rock pi should "track" or center the listed object to the center of the image.
                 #   The tracking algorithm should execute for 10 seconds.  The Rock Pi should then capture
                 #   an image and send it to the host.
                 print('called trackshape on server!')
+
+                # parse first part for track shape then parse for what shape
+                typeOfShapeToTrack = message[11:].lower()
+                # print(typeOfShapeToTrack)
+
+                if typeOfShapeToTrack == 'circle':
+                    response = trackShape('circle')
+                elif typeOfShapeToTrack == 'triangle':
+                    response = trackShape('triangle')
+                elif typeOfShapeToTrack == 'square':
+                    response = trackShape('square')
+                else:
+                    print('INVALID TYPE OF SHAPE TO TRACK!')
+                    socket.send(b'INVALID TYPE OF SHAPE TO TRACK!')
+
                 socket.send(b'trackshape done!')
 
             elif message.lower() == 'getangles':
