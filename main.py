@@ -5,6 +5,8 @@ import zmq
 import base64
 import numpy as np
 import time
+from shapedetector import ShapeDetector
+import imutils
 
 # from matplotlib import pyplot as plt
 
@@ -59,6 +61,38 @@ class localShape:
         self.name = name
         self.x = x
         self.y = y
+
+
+class ShapeDetector:
+    def __init__(self):
+        pass
+
+    def detect(self, c):
+        # initialize the shape name and approximate the contour
+        shape = "unidentified"
+        peri = cv.arcLength(c, True)
+        approx = cv.approxPolyDP(c, 0.04 * peri, True)
+        # if the shape is a triangle, it will have 3 vertices
+        if len(approx) == 3:
+            shape = "triangle"
+        # if the shape has 4 vertices, it is either a square or
+        # a rectangle
+        elif len(approx) == 4:
+            # compute the bounding box of the contour and use the
+            # bounding box to compute the aspect ratio
+            (x, y, w, h) = cv2.boundingRect(approx)
+            ar = w / float(h)
+            # a square will have an aspect ratio that is approximately
+            # equal to one, otherwise, the shape is a rectangle
+            shape = "square" if ar >= 0.95 and ar <= 1.05 else "rectangle"
+        # if the shape is a pentagon, it will have 5 vertices
+        elif len(approx) == 5:
+            shape = "pentagon"
+        # otherwise, we assume the shape is a circle
+        else:
+            shape = "circle"
+        # return the name of the shape
+        return shape
 
 
 def angletoPWM(angle):
@@ -300,38 +334,136 @@ def getShapes():
     if len(listOfShapes) == 0:
         listOfShapes.append(localShape('empty list!', -1, -1))
 
-    cv.imshow('shapes', img)
-    cv.waitKey(0)
+    # cv.imshow('shapes', img)
+    # cv.waitKey(0)
     cv.destroyAllWindows()
 
     return listOfShapes
 
 
-def getCoordsOfObjectWeWant():
-    pass
+def getCoordsOfObjectWeWant(type1, frame):
+    hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
+
+    l_h = 0
+    l_s = 0
+    l_v = 134
+    u_h = 180
+    u_s = 166
+    u_v = 254
+
+    lower_red = np.array([l_h, l_s, l_v])
+    upper_red = np.array([u_h, u_s, u_v])
+
+    mask = cv.inRange(hsv, lower_red, upper_red)
+    kernel = np.ones((5, 5), np.uint8)
+    mask = cv.erode(mask, kernel)
+
+    # Contours detection
+    if int(cv.__version__[0]) > 3:
+        # Opencv 4.x.x
+        contours, _ = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    else:
+        # Opencv 3.x.x
+        _, contours, _ = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+
+    for cnt in contours:
+        area = cv.contourArea(cnt)
+        approx = cv.approxPolyDP(cnt, 0.02 * cv.arcLength(cnt, True), True)
+        x = approx.ravel()[0]
+        y = approx.ravel()[1]
+
+    cv.drawContours(frame, [approx], 0, (0, 0, 0), 5)
+
+    if len(approx) == 3 and type1 == 'triangle':
+        cv.putText(frame, 'Triangle {},{}'.format(x, y), (x, y),
+                   cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        return x, y
+
+    elif len(approx) == 4 and type1 == 'square':
+        cv.putText(frame, 'Square{},{}'.format(x, y), (x, y),
+                   cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        return x, y
+
+    elif len(approx) == 5:
+        # cv.putText(frame, 'Pentagon', (x, y),
+        #            cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        pass
+
+    elif len(approx) == 6:
+        # cv.putText(frame, 'Hexagon', (x, y),
+        #            cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        pass
+    else:
+        if type1 == 'circle':
+            cv.putText(frame, 'Circle {},{}'.format(x, y), (x, y),
+                       cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            return x, y
+
+    return -1, -1
 
 
 def trackShape(type1):
     t_end = time.time() + 10
+    localx = 0
+    localy = 0
 
     print('time to end exeuction:', t_end)
     while time.time() < t_end:
         # open a video stream
         cam = cv.VideoCapture(4)
+        # cam.set(cv.CAP_PROP_AUTOFOCUS, 0)
         if not cam.isOpened():
             print("Cannot open camera")
             exit()
         while True:
-            # camture frame-by-frame
             # print('current time:', time.time())
             ret, frame = cam.read()
-            # if frame is read correctly ret is True
             if not ret:
                 print("Can't receive frame (stream end?). Exiting ...")
                 break
-            # Our operations on the frame come here
-            # Display the resulting frame
-            cv.imshow('frame', frame)
+
+            # do some work on the current frame
+            windowWidth = frame.shape[1]
+            windowHeight = frame.shape[0]
+            #
+            # print('width', windowWidth)
+            # print('height', windowHeight)
+
+            print('*****')
+
+            # print('width',windowWidth)
+            # print('height',windowHeight)
+
+            # cv.line(img=frame, pt1=(0, windowHeight/2), pt2=(windowWidth, windowHeight/2), color=(0, 0, 0), thickness=2, lineType=8, shift=0)
+            # cv.line(img=frame, pt1=(windowWidth/2, windowHeight), pt2=(windowWidth/2, 0), color=(0, 0, 0), thickness=2, lineType=8, shift=0)
+
+            localx, localy = getCoordsOfObjectWeWant(type1, frame)
+
+            if localx == -1 and localy == -1:
+                print('BAD COORDIANTES TO TRACK')
+            else:
+                print('object we want is at the following coords:')
+                print('x:', localx)
+                print('y:', localy)
+
+                centerCoordX = windowWidth / 2
+                centerCoordY = windowHeight / 2
+
+                cv.imshow('frame', frame)
+
+                if localx > centerCoordX:
+                    print('move left')
+                else:
+                    print('move right')
+
+                if localy > centerCoordY:
+                    print('move down')
+                else:
+                    print('move up')
+
+
+
+            # conditions to quit execution:
             if cv.waitKey(1) == ord('q'):
                 break
             if time.time() >= t_end:
