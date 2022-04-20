@@ -1,3 +1,4 @@
+# Alexander C. Perez, acperez@syr.edu
 # import shutil
 import shutil
 import string
@@ -11,7 +12,8 @@ context = zmq.Context()
 # Socket to talk to server
 print("Connecting to hello world server...")
 socket = context.socket(zmq.REQ)
-socket.connect("tcp://10.144.113.93:6969")
+# socket.connect("tcp://10.144.113.93:6969") # apez pi
+socket.connect("tcp://10.144.113.146:7000") # kyle pi
 
 
 # testing

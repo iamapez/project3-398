@@ -1,3 +1,4 @@
+# Alexander C. Perez, acperez@syr.edu
 import mraa
 import time
 import cv2 as cv
@@ -475,6 +476,7 @@ def trackShape(type1):
 
 def main():
     # main entry point for the program here
+
     context = zmq.Context()
     socket = context.socket(zmq.REP)
     socket.bind('tcp://*:6969')

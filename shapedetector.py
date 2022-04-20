@@ -1,3 +1,4 @@
+# Alexander C. Perez, acperez@syr.edu
 # import the necessary packages
 import cv2
 
